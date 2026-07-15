@@ -7,6 +7,15 @@ on:
   schedule:
     - cron: '*/5 * * * *'   # Executa a cada 5 minutos
   workflow_dispatch:        # Permite execução manual pelo painel do GitHub
+    inputs:
+      test_notify:
+        description: 'Enviar um alerta de teste com o release mais recente'
+        required: false
+        default: 'false'
+        type: choice
+        options:
+          - 'false'
+          - 'true'
 
 permissions:
   contents: write
@@ -54,7 +63,7 @@ jobs:
         SMTP_PORT: ${{ secrets.SMTP_PORT || '465' }}
         
         # Configurações de WhatsApp
-        WHATSAPP_PROVIDER: ${{ secrets.WHATSAPP_PROVIDER || 'none' }}
+        WHATSAPP_PROVIDER: ${{ secrets.WHATSAPP_PROVIDER || 'auto' }}
         CALLMEBOT_PHONE: ${{ secrets.CALLMEBOT_PHONE }}
         CALLMEBOT_API_KEY: ${{ secrets.CALLMEBOT_API_KEY }}
         TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
@@ -69,7 +78,12 @@ jobs:
         PUSHOVER_USER_KEY: ${{ secrets.PUSHOVER_USER_KEY }}
         PUSHOVER_API_TOKEN: ${{ secrets.PUSHOVER_API_TOKEN }}
         PUSHBULLET_ACCESS_TOKEN: ${{ secrets.PUSHBULLET_ACCESS_TOKEN }}
-      run: python monitor.py
+      run: |
+        if [ "${{ github.event.inputs.test_notify }}" = "true" ]; then
+          python monitor.py --test-notify
+        else
+          python monitor.py
+        fi
 
     - name: Salvar Mudanças de Estado (state.json)
       run: |

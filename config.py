@@ -24,7 +24,7 @@ SMTP_SERVER = os.environ.get("SMTP_SERVER") or os.environ.get("SMTP_HOST", "smtp
 SMTP_PORT = int(os.environ.get("SMTP_PORT", 465))
 
 # --- CONFIGURAÇÕES DE WHATSAPP ---
-WHATSAPP_PROVIDER = os.environ.get("WHATSAPP_PROVIDER", "").lower() # 'callmebot', 'twilio', 'none'
+WHATSAPP_PROVIDER = os.environ.get("WHATSAPP_PROVIDER", "").lower() # 'auto', 'callmebot', 'twilio', 'none'
 # CallMeBot
 CALLMEBOT_PHONE = os.environ.get("CALLMEBOT_PHONE")
 CALLMEBOT_API_KEY = os.environ.get("CALLMEBOT_API_KEY")
@@ -33,7 +33,7 @@ TWILIO_ACCOUNT_SID = os.environ.get("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = os.environ.get("TWILIO_AUTH_TOKEN")
 TWILIO_FROM_WHATSAPP = os.environ.get("TWILIO_FROM_WHATSAPP", "whatsapp:+14155238886")
 TWILIO_TO_WHATSAPP = os.environ.get("TWILIO_TO_WHATSAPP")
-if not WHATSAPP_PROVIDER:
+if WHATSAPP_PROVIDER in ("", "auto"):
     if all([TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_TO_WHATSAPP]):
         WHATSAPP_PROVIDER = "twilio"
     elif all([CALLMEBOT_PHONE, CALLMEBOT_API_KEY]):
