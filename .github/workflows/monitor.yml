@@ -41,6 +41,11 @@ jobs:
         EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
         EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
         SMTP_SERVER: ${{ secrets.SMTP_SERVER || 'smtp.gmail.com' }}
+        SMTP_HOST: ${{ secrets.SMTP_HOST }}
+        SMTP_USER: ${{ secrets.SMTP_USER }}
+        SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+        MAIL_FROM: ${{ secrets.MAIL_FROM }}
+        MAIL_TO: ${{ secrets.MAIL_TO }}
         SMTP_PORT: ${{ secrets.SMTP_PORT || '465' }}
         
         # Configurações de WhatsApp

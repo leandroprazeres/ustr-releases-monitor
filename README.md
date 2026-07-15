@@ -86,9 +86,11 @@ Para rodar o robô diretamente na nuvem do GitHub de forma automática a cada 5 
    - `EMAIL_SENDER`
    - `EMAIL_PASSWORD`
    - `EMAIL_RECEIVER`
+   - Também são aceitos os aliases `SMTP_HOST`, `SMTP_USER`, `SMTP_PASSWORD`, `MAIL_FROM` e `MAIL_TO`.
    - `WHATSAPP_PROVIDER`
    - `CALLMEBOT_PHONE`
    - `CALLMEBOT_API_KEY`
+   - Para Twilio, cadastre `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_FROM_WHATSAPP` e `TWILIO_TO_WHATSAPP`.
    - `PUSH_PROVIDER`
    - `TELEGRAM_BOT_TOKEN`
    - `TELEGRAM_CHAT_ID`
