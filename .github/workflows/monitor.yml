@@ -1,0 +1,59 @@
+name: USTR Press Releases Monitor
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'  # Executa a cada 10 minutos
+  workflow_dispatch:        # Permite execução manual pelo painel do GitHub
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout do Repositório
+      uses: actions/checkout@v3
+
+    - name: Configurar Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+
+    - name: Instalar Dependências
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Executar Monitor
+      env:
+        # Configurações de E-mail (SMTP)
+        EMAIL_SENDER: ${{ secrets.EMAIL_SENDER }}
+        EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
+        EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
+        SMTP_SERVER: ${{ secrets.SMTP_SERVER || 'smtp.gmail.com' }}
+        SMTP_PORT: ${{ secrets.SMTP_PORT || '465' }}
+        
+        # Configurações de WhatsApp
+        WHATSAPP_PROVIDER: ${{ secrets.WHATSAPP_PROVIDER || 'none' }}
+        CALLMEBOT_PHONE: ${{ secrets.CALLMEBOT_PHONE }}
+        CALLMEBOT_API_KEY: ${{ secrets.CALLMEBOT_API_KEY }}
+        TWILIO_ACCOUNT_SID: ${{ secrets.TWILIO_ACCOUNT_SID }}
+        TWILIO_AUTH_TOKEN: ${{ secrets.TWILIO_AUTH_TOKEN }}
+        TWILIO_FROM_WHATSAPP: ${{ secrets.TWILIO_FROM_WHATSAPP }}
+        TWILIO_TO_WHATSAPP: ${{ secrets.TWILIO_TO_WHATSAPP }}
+        
+        # Configurações de Push
+        PUSH_PROVIDER: ${{ secrets.PUSH_PROVIDER || 'none' }}
+        TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+        TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        PUSHOVER_USER_KEY: ${{ secrets.PUSHOVER_USER_KEY }}
+        PUSHOVER_API_TOKEN: ${{ secrets.PUSHOVER_API_TOKEN }}
+        PUSHBULLET_ACCESS_TOKEN: ${{ secrets.PUSHBULLET_ACCESS_TOKEN }}
+      run: python monitor.py
+
+    - name: Salvar Mudanças de Estado (state.json)
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add state.json
+        git commit -m "Update state.json [skip ci]" || echo "Nenhuma mudança no estado para commitar"
+        git push
