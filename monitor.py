@@ -262,9 +262,17 @@ def main():
         action="store_true", 
         help="Dispara uma notificação de teste com o release mais recente"
     )
+    parser.add_argument(
+        "--test-whatsapp",
+        action="store_true",
+        help="Dispara apenas uma mensagem curta de teste pelo WhatsApp"
+    )
     args = parser.parse_args()
     
-    if args.test_notify:
+    if args.test_whatsapp:
+        print("[MONITOR] Disparando teste curto de WhatsApp.")
+        notifiers.send_whatsapp_test()
+    elif args.test_notify:
         check_for_updates(test_notify=True)
     elif args.loop:
         print(f"[MONITOR] Iniciando em modo contínuo. Intervalo: {config.LOOP_INTERVAL_SECONDS} segundos.")

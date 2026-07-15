@@ -1,6 +1,7 @@
 import smtplib
 import urllib.parse
 from email.message import EmailMessage
+from html import unescape
 import requests
 import config
 
@@ -59,20 +60,29 @@ def _send_whatsapp_callmebot(message):
         return False
         
     # URL-encode a mensagem
-    encoded_message = urllib.parse.quote(message)
-    url = f"https://api.callmebot.com/whatsapp.php?phone={config.CALLMEBOT_PHONE}&text={encoded_message}&apikey={config.CALLMEBOT_API_KEY}"
+    encoded_message = urllib.parse.quote_plus(message)
+    phone = config.CALLMEBOT_PHONE.strip().replace(" ", "")
+    url = f"https://api.callmebot.com/whatsapp.php?phone={phone}&text={encoded_message}&apikey={config.CALLMEBOT_API_KEY}"
     
     try:
         response = requests.get(url, timeout=15)
-        if response.status_code == 200:
-            print("[WHATSAPP-CallMeBot] Mensagem enviada com sucesso!")
+        response_text = unescape(response.text).replace("\n", " ").strip()
+        print(f"[WHATSAPP-CallMeBot] Resposta HTTP {response.status_code}: {response_text[:500]}")
+        error_markers = ("error", "invalid", "not allowed", "not authorized", "not found")
+        if response.status_code == 200 and not any(marker in response_text.lower() for marker in error_markers):
+            print("[WHATSAPP-CallMeBot] API aceitou a mensagem.")
             return True
         else:
-            print(f"[WHATSAPP-CallMeBot] Erro no envio (Código {response.status_code}): {response.text}")
+            print("[WHATSAPP-CallMeBot] A API recusou a mensagem.")
             return False
     except Exception as e:
         print(f"[WHATSAPP-CallMeBot] Erro ao conectar à API: {e}")
         return False
+
+
+def send_whatsapp_test():
+    """Envia uma mensagem curta para diagnosticar somente o canal WhatsApp."""
+    return send_whatsapp("Teste USTR monitor: mensagem curta de verificacao do WhatsApp.")
 
 
 def _send_whatsapp_twilio(message):
