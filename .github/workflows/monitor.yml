@@ -31,6 +31,9 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
 
+    - name: Rodar Testes
+      run: pytest -q
+
     - name: Executar Monitor
       env:
         # Configurações de E-mail (SMTP)

@@ -1,6 +1,6 @@
 # USTR Press Releases Monitor 🤖
 
-Este robô monitora a página de comunicados de imprensa (Press Releases) do USTR ([https://ustr.gov/about-us/policy-offices/press-office/press-releases](https://ustr.gov/about-us/policy-offices/press-office/press-releases)). Quando um novo comunicado é publicado, ele extrai o título, link e gera um resumo do conteúdo, disparando notificações de forma imediata por E-mail, WhatsApp e Push Notification.
+Este robô monitora a página de comunicados de imprensa (Press Releases) do USTR ([https://ustr.gov/about-us/policy-offices/press-office/press-releases](https://ustr.gov/about-us/policy-offices/press-office/press-releases)). Quando um novo comunicado é publicado, ele extrai o título, link e gera um resumo do conteúdo, disparando notificações por E-mail, WhatsApp e Push Notification.
 
 ---
 
@@ -12,7 +12,8 @@ Este robô monitora a página de comunicados de imprensa (Press Releases) do UST
   1. **E-mail**: Disparo via SMTP padrão (Gmail, Office365, etc.).
   2. **WhatsApp**: Suporte gratuito via **CallMeBot** ou comercial via **Twilio**.
   3. **Push Notifications**: Notificações instantâneas no celular via **Telegram Bot**, **Pushover** ou **Pushbullet**.
-- **Execução Híbrida**: Pode rodar como um serviço contínuo local/servidor ou de forma 100% autônoma e gratuita no **GitHub Actions** (rodando a cada 10 minutos e salvando estado).
+- **Execução Híbrida**: Pode rodar como um serviço contínuo local/servidor ou de forma 100% autônoma e gratuita no **GitHub Actions** (rodando a cada 5 minutos e salvando estado).
+- **Filtro de Releases**: Ignora links auxiliares, arquivos mensais, discursos, páginas de temas e outros itens que aparecem misturados na listagem da USTR.
 
 ---
 
@@ -77,7 +78,7 @@ TELEGRAM_CHAT_ID=seu_chat_id_aqui
 
 ## Como Configurar no GitHub Actions (Nuvem Grátis)
 
-Para rodar o robô diretamente na nuvem do GitHub de forma automática a cada 10 minutos, siga os passos abaixo:
+Para rodar o robô diretamente na nuvem do GitHub de forma automática a cada 5 minutos, siga os passos abaixo:
 
 1. Crie um repositório no seu GitHub chamado `ustr-releases-monitor`.
 2. Vá nas configurações do repositório: **Settings > Secrets and variables > Actions**.
@@ -96,3 +97,5 @@ Para rodar o robô diretamente na nuvem do GitHub de forma automática a cada 10
    - Role até a seção **Workflow permissions** e selecione **Read and write permissions**.
    - Clique em **Save**.
 5. Faça o push do código para o repositório. O workflow iniciará automaticamente com base na agenda (cron) configurada em `.github/workflows/monitor.yml`.
+
+Observação: o GitHub Actions não mantém uma conexão aberta com o site. Ele executa verificações programadas; neste repositório, a frequência configurada é de 5 minutos.
