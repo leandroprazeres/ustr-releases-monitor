@@ -2,11 +2,36 @@ import os
 import json
 import time
 import argparse
+import re
 import requests
 from bs4 import BeautifulSoup
 
 import config
 import notifiers
+
+MONTHS = (
+    "january",
+    "february",
+    "march",
+    "april",
+    "may",
+    "june",
+    "july",
+    "august",
+    "september",
+    "october",
+    "november",
+    "december",
+)
+RELEASE_PATH_RE = re.compile(
+    r"/about(?:-us)?/policy-offices/press-office/press-releases/"
+    r"\d{4}/(?:" + "|".join(MONTHS) + r")/.+",
+    re.IGNORECASE,
+)
+
+
+def normalize_space(value):
+    return " ".join(value.split())
 
 def load_state():
     """Carrega o estado dos releases já vistos."""
@@ -33,6 +58,11 @@ def save_state(state):
         print(f"[MONITOR] Erro ao salvar estado: {e}")
 
 
+def is_press_release_url(url):
+    """Retorna True apenas para paginas individuais de press releases."""
+    return bool(RELEASE_PATH_RE.search(url or ""))
+
+
 def fetch_release_summary(url):
     """Acessa a página de detalhes do release para extrair um resumo."""
     headers = {
@@ -52,7 +82,7 @@ def fetch_release_summary(url):
         # Estratégia 1: Tentar a tag meta description (muito precisa no site do USTR)
         meta_desc = soup.find("meta", attrs={"name": "description"})
         if meta_desc and meta_desc.get("content"):
-            summary = meta_desc.get("content").strip()
+            summary = normalize_space(meta_desc.get("content").strip())
             if len(summary) > 20:
                 return summary
                 
@@ -61,7 +91,7 @@ def fetch_release_summary(url):
         if body_div:
             paragraphs = body_div.find_all("p")
             for p in paragraphs:
-                text = p.get_text().strip()
+                text = normalize_space(p.get_text(" ", strip=True))
                 # Ignora parágrafos vazios, muito curtos ou que apenas contêm datas
                 if text and len(text) > 40 and not text.replace(" ", "").replace(",", "").isdigit():
                     return text
@@ -72,6 +102,47 @@ def fetch_release_summary(url):
     except Exception as e:
         print(f"[MONITOR] Erro ao buscar resumo detalhado de {url}: {e}")
         return "Erro ao carregar o resumo automático. Clique no link para ver o original."
+
+
+def parse_releases(html):
+    """Extrai somente releases individuais da listagem HTML do USTR."""
+    soup = BeautifulSoup(html, "html.parser")
+    releases = []
+    seen = set()
+    last_date = ""
+    
+    rows = soup.select(".view-content .views-row")
+    
+    for row in rows:
+        time_tag = row.select_one(".views-field-field-date time")
+        if time_tag:
+            last_date = normalize_space(time_tag.get_text(" ", strip=True))
+
+        link_tag = row.select_one(".views-field-title a[href]")
+        if not link_tag:
+            continue
+            
+        title = normalize_space(link_tag.get_text(" ", strip=True))
+        relative_link = link_tag.get("href")
+        if not title or not relative_link or not is_press_release_url(relative_link):
+            continue
+        
+        # Constrói o link completo
+        full_link = relative_link
+        if relative_link.startswith("/"):
+            full_link = f"https://ustr.gov{relative_link}"
+
+        if full_link in seen:
+            continue
+        seen.add(full_link)
+            
+        releases.append({
+            "title": title,
+            "link": full_link,
+            "date": last_date
+        })
+        
+    return releases
 
 
 def scrape_releases():
@@ -87,45 +158,7 @@ def scrape_releases():
     print(f"[MONITOR] Acessando listagem de releases: {config.TARGET_URL}")
     response = requests.get(config.TARGET_URL, headers=headers, timeout=15)
     response.raise_for_status()
-    
-    soup = BeautifulSoup(response.text, "html.parser")
-    releases = []
-    
-    # Encontra todas as linhas da lista de visualização
-    rows = soup.find_all("div", class_="views-row")
-    
-    for row in rows:
-        title_field = row.find("div", class_="views-field-title")
-        if not title_field:
-            continue
-            
-        link_tag = title_field.find("a")
-        if not link_tag:
-            continue
-            
-        title = link_tag.get_text().strip()
-        relative_link = link_tag.get("href")
-        
-        # Constrói o link completo
-        full_link = relative_link
-        if relative_link.startswith("/"):
-            full_link = f"https://ustr.gov{relative_link}"
-            
-        # Tenta obter a data se existir
-        date_field = row.find("div", class_="views-field-field-date")
-        date_str = ""
-        if date_field:
-            time_tag = date_field.find("time")
-            if time_tag:
-                date_str = time_tag.get_text().strip()
-                
-        releases.append({
-            "title": title,
-            "link": full_link,
-            "date": date_str
-        })
-        
-    return releases
+    return parse_releases(response.text)
 
 
 def check_for_updates(test_notify=False):
