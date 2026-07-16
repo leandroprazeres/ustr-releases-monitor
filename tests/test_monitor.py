@@ -1,4 +1,4 @@
-from monitor import parse_releases
+from monitor import canonicalize_url, merge_seen_urls, parse_releases
 
 
 def test_parse_releases_filters_non_release_links_and_inherits_date():
@@ -36,3 +36,33 @@ def test_parse_releases_filters_non_release_links_and_inherits_date():
         "Second release",
     ]
     assert releases[1]["date"] == "2026-07-13"
+    assert releases[1]["link"] == (
+        "https://ustr.gov/about/policy-offices/press-office/"
+        "press-releases/2026/july/second-release"
+    )
+
+
+def test_canonicalize_url_treats_about_us_as_about_alias():
+    about_us = "/about-us/policy-offices/press-office/press-releases/2026/july/release"
+    about = "https://ustr.gov/about/policy-offices/press-office/press-releases/2026/july/release/"
+
+    assert canonicalize_url(about_us) == canonicalize_url(about)
+
+
+def test_merge_seen_urls_keeps_more_than_one_hundred_urls():
+    existing = [
+        f"https://ustr.gov/about/policy-offices/press-office/press-releases/2025/january/release-{i}"
+        for i in range(120)
+    ]
+    current = [
+        "/about-us/policy-offices/press-office/press-releases/2026/july/current-release"
+    ]
+
+    merged = merge_seen_urls(existing, current)
+
+    assert len(merged) == 121
+    assert merged[0].endswith("release-0")
+    assert merged[-1] == (
+        "https://ustr.gov/about/policy-offices/press-office/"
+        "press-releases/2026/july/current-release"
+    )

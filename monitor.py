@@ -5,6 +5,7 @@ import argparse
 import re
 import requests
 from bs4 import BeautifulSoup
+from urllib.parse import urljoin, urlparse, urlunparse
 
 import config
 import notifiers
@@ -33,6 +34,31 @@ RELEASE_PATH_RE = re.compile(
 def normalize_space(value):
     return " ".join(value.split())
 
+
+def canonicalize_url(url):
+    """Normaliza URLs do USTR para evitar falsos positivos por aliases do site."""
+    full_url = urljoin("https://ustr.gov", url or "")
+    parsed = urlparse(full_url)
+    path = parsed.path.replace("/about-us/", "/about/").rstrip("/")
+    return urlunparse(("https", "ustr.gov", path, "", "", ""))
+
+
+def unique_urls(urls):
+    """Retorna URLs canonicas sem duplicatas, preservando a ordem."""
+    unique = []
+    seen = set()
+    for url in urls:
+        canonical = canonicalize_url(url)
+        if canonical and canonical not in seen:
+            unique.append(canonical)
+            seen.add(canonical)
+    return unique
+
+
+def merge_seen_urls(existing_urls, release_urls):
+    """Mescla URLs antigas com as encontradas agora, sem limitar o historico."""
+    return unique_urls([*existing_urls, *release_urls])
+
 def load_state():
     """Carrega o estado dos releases já vistos."""
     if os.path.exists(config.STATE_FILE):
@@ -41,6 +67,7 @@ def load_state():
                 state = json.load(f)
                 # Garante que temos a lista de URLs vistas
                 if "seen_urls" in state:
+                    state["seen_urls"] = unique_urls(state["seen_urls"])
                     return state
         except Exception as e:
             print(f"[MONITOR] Erro ao carregar arquivo de estado: {e}. Criando novo estado.")
@@ -127,10 +154,7 @@ def parse_releases(html):
         if not title or not relative_link or not is_press_release_url(relative_link):
             continue
         
-        # Constrói o link completo
-        full_link = relative_link
-        if relative_link.startswith("/"):
-            full_link = f"https://ustr.gov{relative_link}"
+        full_link = canonicalize_url(relative_link)
 
         if full_link in seen:
             continue
@@ -178,11 +202,13 @@ def check_for_updates(test_notify=False):
         # Carrega o estado anterior
         state = load_state()
         seen_urls = state["seen_urls"]
+        seen_url_set = set(seen_urls)
+        release_urls = [r["link"] for r in releases]
         
         # Se for a primeira execução e o estado estiver vazio
         if not seen_urls and not test_notify:
             print("[MONITOR] Primeiro run do monitor. Salvando releases históricos...")
-            state["seen_urls"] = [r["link"] for r in releases]
+            state["seen_urls"] = merge_seen_urls([], release_urls)
             save_state(state)
             
             # Envia e-mail opcional avisando que o monitor iniciou
@@ -213,7 +239,7 @@ def check_for_updates(test_notify=False):
         # Identifica novos releases (da listagem, em ordem cronológica reversa, processamos do mais antigo para o mais novo)
         new_releases = []
         for r in releases:
-            if r["link"] not in seen_urls:
+            if r["link"] not in seen_url_set:
                 new_releases.append(r)
                 
         # Inverte para notificar do mais antigo para o mais recente
@@ -221,6 +247,16 @@ def check_for_updates(test_notify=False):
         
         if new_releases:
             print(f"[MONITOR] Detectado(s) {len(new_releases)} novo(s) release(s)!")
+            if len(new_releases) > config.MAX_NEW_RELEASES_PER_RUN:
+                print(
+                    "[MONITOR] Quantidade de novos releases acima do limite "
+                    f"({config.MAX_NEW_RELEASES_PER_RUN}). Provavel correcao de estado; "
+                    "atualizando memoria sem enviar notificacoes em massa."
+                )
+                state["seen_urls"] = merge_seen_urls(seen_urls, release_urls)
+                save_state(state)
+                return
+
             for r in new_releases:
                 print(f"[MONITOR] Novo release encontrado: {r['title']}")
                 summary = fetch_release_summary(r["link"])
@@ -234,12 +270,8 @@ def check_for_updates(test_notify=False):
                 
                 # Adiciona ao estado
                 seen_urls.append(r["link"])
-                
-            # Limita a lista de vistos para evitar crescimento infinito
-            if len(seen_urls) > 100:
-                seen_urls = seen_urls[-100:]
-                
-            state["seen_urls"] = seen_urls
+
+            state["seen_urls"] = merge_seen_urls(seen_urls, [])
             save_state(state)
         else:
             print("[MONITOR] Nenhuma novidade encontrada.")

@@ -11,6 +11,7 @@ TARGET_URL = os.environ.get(
 )
 STATE_FILE = os.environ.get("STATE_FILE", "state.json")
 LOOP_INTERVAL_SECONDS = int(os.environ.get("LOOP_INTERVAL_SECONDS", 60))
+MAX_NEW_RELEASES_PER_RUN = int(os.environ.get("MAX_NEW_RELEASES_PER_RUN", 5))
 
 # --- CONFIGURAÇÕES DE E-MAIL (SMTP) ---
 EMAIL_SENDER = (
